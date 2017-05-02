@@ -19,11 +19,31 @@ defmodule Rumbl.VideoControllerTest do
   end
 
   @tag login_as: "max"
+  test "authorizes actions agains access by other users", %{user: owner, conn: conn} do
+    video = insert_video(owner, @valid_attrs)
+    non_owner = insert_user(username: "sneaky")
+    conn = assign(conn, :current_user, non_owner)
+
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :show, video))
+    end
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :edit, video))
+    end
+    assert_error_sent :not_found, fn ->
+      put(conn, video_path(conn, :update, video, video: @valid_attrs))
+    end
+    assert_error_sent :not_found, fn ->
+      delete(conn, video_path(conn, :delete, video))
+    end
+  end
+
+  @tag login_as: "max"
   test "creates user video and redirects", %{conn: conn, user: user} do 
     conn = post conn, video_path(conn, :create), video: @valid_attrs 
     assert redirected_to(conn) == video_path(conn, :index)
-    assert Repo.get_by!(Video, @valid_attrs).user_id == user.id
-end
+    assert Repo.get_by!(Video, title: "vid").user_id == user.id
+  end
 
   @tag login_as: "max"
   test "does not create a video and renders errors when invalid", %{conn: conn} do
